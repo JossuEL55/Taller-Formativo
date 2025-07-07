@@ -1,0 +1,30 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using DesignPatterns.Models;
+using Microsoft.AspNetCore.Diagnostics;
+
+namespace DesignPatterns
+{
+    public class MemoryCollection
+    {
+        private static MemoryCollection _instance;
+
+        public ICollection<Vehicle> Vehicles { get; set; }
+
+        public MemoryCollection()
+        {
+            Vehicles = new List<Vehicle>();
+        }
+
+        public static MemoryCollection Instance
+        {
+            get
+            {
+                if (_instance == null)
+                    _instance = new MemoryCollection();
+                return _instance;
+            }
+        }
+    }
+}

@@ -1,4 +1,4 @@
-﻿@model HomeViewModel;
+﻿@model HomeViewModel
 
 @{
     ViewData["Title"] = "Home Page";
@@ -6,61 +6,72 @@
 
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-    @if(!string.IsNullOrEmpty(ViewBag.ErrorMessage)) {
-        @ViewBag.ErrorMessage
+    <p>
+        Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.
+    </p>
+
+    @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+    {
+        <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
     }
+
     <table class="table">
         <thead>
-        <th>Id</th>
-        <th>Tipo</th>
-        <th>Marca</th>
-        <th>Modelo</th>
-        <th>Color</th>
-        <th>Gallons</th>
-        <th>Status</th>
-        <th>Actions</th>
+            <tr>
+                <th>Id</th>
+                <th>Tipo</th>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Color</th>
+                <th>Gallons</th>
+                <th>Status</th>
+                <th>Aire Acond.</th>
+                <th>Actions</th>
+            </tr>
         </thead>
-        @foreach (var vehicle in Model.Vehicles)
-        {
-    <tr>
-        <td>
-            @vehicle.ID
-        </td>
-        <td>
-            @(vehicle.GetType().Name)
-        </td>
-        <td>
-            @vehicle.Brand
-        </td>
-        <td>
-            @vehicle.Model
-        </td>
-        <td>
-            @vehicle.Color
-        </td>
-        <td>
-            @vehicle.Gas.ToString("N1")
-        </td>
-        <td>
-            @(vehicle.IsEngineOn() ? "Encendido": "Apagado")
-        </td>
-        <td>
-            @if (vehicle.IsEngineOn())
+        <tbody>
+            @foreach (var v in Model.Vehicles)
             {
-                <a href="/Home/StopEngine?id=@vehicle.ID">Stop Engine</a> }
-            else
-            {
-                <a href="/Home/StartEngine?id=@vehicle.ID">Start Engine</a>
+                <tr>
+                    <td>@v.ID</td>
+                    <td>@v.GetType().Name</td>
+                    <td>@v.Brand</td>
+                    <td>@v.Model</td>
+                    <td>@v.Color</td>
+                    <td>@v.Gas.ToString("N1")</td>
+                    <td>@(v.IsEngineOn() ? "Encendido" : "Apagado")</td>
+                    <td>
+                        @* Muestra la propiedad extra inyectada *@
+                        @{
+                            var tieneAire = v.ExtraProperties.ContainsKey("TieneAireAcondicionado")
+                            ? v.ExtraProperties["TieneAireAcondicionado"]
+                            : "N/A";
+                        }
+                        @tieneAire
+                    </td>
+                    <td>
+                        @* Arrancar o parar según estado *@
+                        @if (v.IsEngineOn())
+                        {
+                            <a asp-action="StopEngine" asp-route-id="@v.ID">Stop Engine</a>
+                        }
+                        else
+                        {
+                            <a asp-action="StartEngine" asp-route-id="@v.ID">Start Engine</a>
+                        }
+                        |
+                        @* Cargar gasolina *@
+                        <a asp-action="AddGas" asp-route-id="@v.ID">Llenar tanque</a>
+                    </td>
+                </tr>
             }
-
-            <a href="/Home/AddGas?id=@vehicle.ID">LLenar tanque</a>
-
-        </td>
-    </tr>
-        }
+        </tbody>
     </table>
 
-    <a href="/Home/AddMustang">Add Mustang</a>
-    <a href="/Home/AddExplorer">Add Explorer</a>
+    <p>
+        @* Enlaces para agregar nuevos modelos vía Add(string model) *@  
+        <a asp-action="Add" asp-route-model="Mustang">Add Mustang</a> |
+        <a asp-action="Add" asp-route-model="Explorer">Add Explorer</a> |
+        <a asp-action="Add" asp-route-model="Escape">Add Escape</a>
+    </p>
 </div>

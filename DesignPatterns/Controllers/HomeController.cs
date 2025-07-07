@@ -1,113 +1,115 @@
-﻿using DesignPatterns.Models;
-using DesignPatterns.Repositories;
+﻿using System;
+using System.Diagnostics;
+using DesignPatterns.Factories;        // Para resolver la fábrica de vehículos
+using DesignPatterns.Models;           // Contiene la definición de Vehicle y HomeViewModel
+using DesignPatterns.Repositories;     // Para IVehicleRepository y su decorator
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DesignPatterns.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private readonly IVehicleRepository _vehicleRepository;  // Repositorio inyectado (con decorator)
+        private readonly CarFactoryProvider _factoryProvider;    // Resuelve la fábrica adecuada según modelo
+        private readonly ILogger<HomeController> _logger;        // ILogger para registro de eventos
 
-        private readonly IVehicleRepository _vehicleRepository;
-
-        public HomeController(IVehicleRepository vehicleRepository,ILogger<HomeController> logger)
+        public HomeController(
+            IVehicleRepository vehicleRepository,
+            CarFactoryProvider factoryProvider,
+            ILogger<HomeController> logger)
         {
             _vehicleRepository = vehicleRepository;
+            _factoryProvider = factoryProvider;
             _logger = logger;
         }
 
-        public IActionResult Index()
+        // Acción principal: muestra la lista de vehículos y un posible mensaje de error
+        public IActionResult Index(string error = null)
         {
-            var model = new HomeViewModel();
-            model.Vehicles = _vehicleRepository.GetVehicles();
-            string error = Request.Query.ContainsKey("error") ? Request.Query["error"].ToString() : null;
-            ViewBag.ErrorMessage = error;
+            if (!string.IsNullOrEmpty(error))
+                ViewBag.ErrorMessage = error;  // Pasa el mensaje de error a la vista si existe
 
-            return View(model);
+            var vm = new HomeViewModel
+            {
+                Vehicles = _vehicleRepository.GetVehicles()  // Obtiene todos los vehículos almacenados
+            };
+            return View(vm);
         }
 
+        // Acción genérica para agregar un vehículo según su modelo
         [HttpGet]
-        public IActionResult AddMustang()
+        public IActionResult Add(string model)
         {
-            _vehicleRepository.AddVehicle(new Car("red","Ford","Mustang"));
-            return Redirect("/");
+            // Resuelve la fábrica de vehículos por nombre (Mustang, Explorer, Escape, etc.)
+            var factory = _factoryProvider.Get(model);
+            // Crea la instancia de Vehicle usando el Builder interno de la fábrica
+            var vehicle = factory.Create();
+            // Guarda el vehículo (aquí se inyectan año y propiedades por defecto)
+            _vehicleRepository.AddVehicle(vehicle);
+            // Redirige a Index para refrescar la lista
+            return RedirectToAction(nameof(Index));
         }
 
-        [HttpGet]
-        public IActionResult AddExplorer()
-        {
-            _vehicleRepository.AddVehicle(new Car("red", "Ford", "Explorer"));
-            return Redirect("/");
-        }
-
+        // Arranca el motor del vehículo identificado por 'id'
         [HttpGet]
         public IActionResult StartEngine(string id)
         {
             try
             {
                 var vehicle = _vehicleRepository.Find(id);
-                vehicle.StartEngine();
-                return Redirect("/");
-            }
-            catch(Exception ex)
-            {
-                ViewBag.ErrorMessage = ex.Message;
-                return Redirect($"/?error={ex.Message}");
-            }
-          
-        }
-
-        [HttpGet]
-        public IActionResult AddGas(string id)
-        {
-
-            try
-            {
-                var vehicle = _vehicleRepository.Find(id);
-                vehicle.AddGas();
-                return Redirect("/");
+                vehicle.StartEngine();  // Lógica propia de Vehicle
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage = ex.Message;
-                return Redirect($"/?error={ex.Message}");
+                // En caso de error, redirige a Index pasando el mensaje
+                return RedirectToAction(nameof(Index), new { error = ex.Message });
             }
         }
 
+        // Agrega gas al vehículo identificado por 'id'
+        [HttpGet]
+        public IActionResult AddGas(string id)
+        {
+            try
+            {
+                var vehicle = _vehicleRepository.Find(id);
+                vehicle.AddGas();  // Incrementa el combustible
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                return RedirectToAction(nameof(Index), new { error = ex.Message });
+            }
+        }
+
+        // Detiene el motor del vehículo identificado por 'id'
         [HttpGet]
         public IActionResult StopEngine(string id)
         {
             try
             {
                 var vehicle = _vehicleRepository.Find(id);
-                vehicle.StopEngine();
-                return Redirect("/");
+                vehicle.StopEngine();  // Detiene el motor
+                return RedirectToAction(nameof(Index));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                ViewBag.ErrorMessage = ex.Message;
-                return Redirect($"/?error={ex.Message}");
+                return RedirectToAction(nameof(Index), new { error = ex.Message });
             }
-           
-           
         }
 
-
+        // Página de privacidad (acción sin lógica adicional)
         public IActionResult Privacy()
-        {
-            return View();
-        }
+            => View();
 
+        // Página de error estándar con caché desactivado
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+            => View(new ErrorViewModel
+            {
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            });
     }
 }
